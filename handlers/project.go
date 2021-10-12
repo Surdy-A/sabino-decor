@@ -3,7 +3,6 @@ package handlers
 import (
 	"net/http"
 	"sabino-decor/models"
-	"time"
 
 	"github.com/gin-gonic/gin"
 	"go.mongodb.org/mongo-driver/bson"
@@ -12,19 +11,19 @@ import (
 	"golang.org/x/net/context"
 )
 
-type BlogHandler struct {
+type ProjectHandler struct {
 	collection *mongo.Collection
 	ctx        context.Context
 }
 
-func NewBlogHandler(ctx context.Context, collection *mongo.Collection) *BlogHandler {
-	return &BlogHandler{
+func NewProjectHandler(ctx context.Context, collection *mongo.Collection) *ProjectHandler {
+	return &ProjectHandler{
 		collection: collection,
 		ctx:        ctx,
 	}
 }
 
-func (handler *BlogHandler) GetArticles(c *gin.Context) {
+func (handler *ProjectHandler) GetProjects(c *gin.Context) {
 	cur, err := handler.collection.Find(handler.ctx, bson.M{})
 
 	if err != nil {
@@ -33,44 +32,43 @@ func (handler *BlogHandler) GetArticles(c *gin.Context) {
 	}
 	defer cur.Close(handler.ctx)
 
-	var blogs []models.Blog
+	var projects []models.Project
 
 	for cur.Next(handler.ctx) {
-		var blog models.Blog
-		cur.Decode(&blog)
+		var project models.Project
+		cur.Decode(&project)
 
-		blogs = append(blogs, blog)
+		projects = append(projects, project)
 	}
 
-	c.JSON(http.StatusOK, blogs)
+	c.JSON(http.StatusOK, projects)
 }
 
-func (handler *BlogHandler) CreateArticle(c *gin.Context) {
+func (handler *ProjectHandler) CreateProject(c *gin.Context) {
 
-	var blog models.Blog
+	var project models.Project
 
-	if err := c.ShouldBindJSON(&blog); err != nil {
+	if err := c.ShouldBindJSON(&project); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	blog.ID = primitive.NewObjectID()
-	blog.PublishedAt = time.Now()
-	_, err := handler.collection.InsertOne(handler.ctx, blog)
+	project.ID = primitive.NewObjectID()
+	_, err := handler.collection.InsertOne(handler.ctx, project)
 
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error while inserting a new blog article"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error while inserting a new project article"})
 		return
 	}
 
-	c.JSON(http.StatusOK, blog)
+	c.JSON(http.StatusOK, project)
 }
 
-func (handler *BlogHandler) UpdateArticle(c *gin.Context) {
+func (handler *ProjectHandler) UpdateProject(c *gin.Context) {
 	id := c.Param("id")
 
-	var blog models.Blog
-	if err := c.ShouldBindJSON(&blog); err != nil {
+	var project models.Project
+	if err := c.ShouldBindJSON(&project); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
@@ -80,22 +78,19 @@ func (handler *BlogHandler) UpdateArticle(c *gin.Context) {
 		"_id": objectId},
 		bson.D{
 			{"$set", bson.D{
-				{"title", blog.Tittle},
-				{"Conetent", blog.Content},
-				{"published_at", blog.PublishedAt},
-				{"image", blog.Image},
-				{"comments", blog.Comments},
-				{"likes", blog.Likes},
+				{"name", project.Name},
+				{"description", project.Description},
+				{"image", project.Image},
 			}}})
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "Blog Article has been updated"})
+	c.JSON(http.StatusOK, gin.H{"message": "Project has been updated"})
 }
 
-func (handler *BlogHandler) DeleteArticle(c *gin.Context) {
+func (handler *ProjectHandler) DeleteProject(c *gin.Context) {
 	id := c.Param("id")
 	objectId, _ := primitive.ObjectIDFromHex(id)
 	_, err := handler.collection.DeleteOne(handler.ctx, bson.M{
@@ -107,16 +102,16 @@ func (handler *BlogHandler) DeleteArticle(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "Blog Article has been deleted"})
+	c.JSON(http.StatusOK, gin.H{"message": "Project has been deleted"})
 }
 
-func (handler *BlogHandler) GetArticle(c *gin.Context) {
+func (handler *ProjectHandler) GetProject(c *gin.Context) {
 	id := c.Param("id")
 	objectid, _ := primitive.ObjectIDFromHex(id)
 	cur := handler.collection.FindOne(handler.ctx, bson.M{
 		"_id": objectid,
 	})
-	var article models.Blog
+	var article models.Project
 	err := cur.Decode(&article)
 
 	if err != nil {
